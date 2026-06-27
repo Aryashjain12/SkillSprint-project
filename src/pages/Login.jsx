@@ -5,7 +5,8 @@ export default function Login() {
     await supabase.auth.signInWithOAuth({
       provider: 'github',
       options: {
-        redirectTo: window.location.origin + '/profile'
+        redirectTo: window.location.origin + '/profile',
+        scopes: 'read:user public_repo'
       }
     })
   }
@@ -14,24 +15,18 @@ export default function Login() {
     <div className="min-h-screen bg-gray-950 flex items-center justify-center px-4">
       <div className="bg-gray-900 border border-gray-800 rounded-2xl p-10 max-w-md w-full text-center shadow-2xl">
 
-        {/* Logo */}
-        <div className="mb-6">
-          <span className="text-4xl font-black text-white tracking-tight">
-            Skill<span className="text-indigo-500">Sprint</span>
-          </span>
-          <p className="text-gray-400 mt-2 text-sm">
-            Find teammates. Build projects. Earn from gigs.
-          </p>
-        </div>
+        <h1 className="text-4xl font-black text-white mb-2">
+          Skill<span className="text-indigo-500">Sprint</span>
+        </h1>
 
-        {/* Features list */}
-        <div className="text-left bg-gray-800 rounded-xl p-4 mb-8 space-y-2">
-          <p className="text-gray-300 text-sm">✅ AI matches you with the right teammates</p>
-          <p className="text-gray-300 text-sm">✅ Earn from micro-gigs as a student</p>
-          <p className="text-gray-300 text-sm">✅ Build a real contribution score for recruiters</p>
-        </div>
+        <p className="text-gray-300 font-semibold text-lg mb-3">
+          Find the right teammates and build amazing projects with AI.
+        </p>
 
-        {/* GitHub Login Button */}
+        <p className="text-gray-500 text-sm mb-8">
+          Connect your GitHub account to get started.
+        </p>
+
         <button
           onClick={handleGitHubLogin}
           className="w-full flex items-center justify-center gap-3 bg-white text-gray-900 font-semibold py-3 px-6 rounded-xl hover:bg-gray-100 transition-all duration-200 text-sm"
