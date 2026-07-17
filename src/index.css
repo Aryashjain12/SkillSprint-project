@@ -1,3 +1,39 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  h1, h2, h3, h4 {
+    @apply font-display text-blueprint-900;
+  }
+  :focus-visible {
+    outline: 2px solid #FF6B4A;
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-signal px-5 py-2.5 font-semibold text-white shadow-sm transition hover:bg-signal-dark active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-blueprint-700/20 bg-white px-5 py-2.5 font-semibold text-blueprint-700 transition hover:bg-blueprint-50 active:scale-[0.98];
+  }
+  .card {
+    @apply rounded-xl border border-gridline bg-white p-5 shadow-[0_1px_2px_rgba(28,35,33,0.04)];
+  }
+  .input {
+    @apply w-full rounded-lg border border-gridline bg-white px-3.5 py-2.5 text-sm text-ink placeholder:text-ink/40 focus:border-blueprint-500 focus:outline-none focus:ring-2 focus:ring-blueprint-100;
+  }
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-blueprint-900;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-md border border-blueprint-700/15 bg-blueprint-50 px-2.5 py-1 text-xs font-medium text-blueprint-700;
+  }
+  .grid-texture {
+    background-color: #F6F7F4;
+    background-image: linear-gradient(#DCE1DD 1px, transparent 1px), linear-gradient(90deg, #DCE1DD 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+}

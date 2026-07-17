@@ -1,45 +1,77 @@
-import { supabase } from '../supabaseClient'
+import React from 'react'
+import { Navigate } from 'react-router-dom'
+import { Github, ListChecks, ArrowRight, ShieldCheck, TrendingUp } from 'lucide-react'
+import { useAuth } from '../context/AuthContext.jsx'
+
+function ScoreMechanic() {
+  const steps = [
+    { icon: ListChecks, label: 'Owner assigns you a task', tint: 'text-blueprint-700' },
+    { icon: ShieldCheck, label: 'You finish it, owner reviews it', tint: 'text-amber' },
+    { icon: TrendingUp, label: 'Your score goes up', tint: 'text-moss' }
+  ]
+  return (
+    <div className="flex flex-col gap-3">
+      {steps.map((s, i) => {
+        const Icon = s.icon
+        return (
+          <div key={i} className="flex items-center gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gridline bg-white">
+              <Icon size={17} className={s.tint} />
+            </span>
+            <p className="text-sm text-ink/70">{s.label}</p>
+            {i < steps.length - 1 && <ArrowRight size={14} className="ml-auto shrink-0 text-ink/20" />}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
 export default function Login() {
-  const handleGitHubLogin = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: 'github',
-      options: {
-        redirectTo: window.location.origin + '/profile',
-        scopes: 'read:user public_repo'
-      }
-    })
-  }
+  const { isAuthenticated, signInWithGithub } = useAuth()
+
+  if (isAuthenticated) return <Navigate to="/dashboard" replace />
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center px-4">
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-10 max-w-md w-full text-center shadow-2xl">
+    <div className="grid min-h-screen grid-cols-1 md:grid-cols-2">
+      <div className="flex flex-col justify-center gap-8 px-8 py-16 sm:px-16">
+        <div className="flex items-center gap-2">
+          <div className="grid grid-cols-3 gap-[3px]">
+            {[1, 2, 0, 2, 3, 1, 0, 1, 2].map((i, idx) => (
+              <span key={idx} className={`h-[7px] w-[7px] rounded-[2px] ${['bg-blueprint-100', 'bg-blueprint-300', 'bg-signal', 'bg-moss'][i]}`} />
+            ))}
+          </div>
+          <span className="font-display text-lg font-semibold text-blueprint-900">SkillSprint</span>
+        </div>
 
-        <h1 className="text-4xl font-black text-white mb-2">
-          Skill<span className="text-indigo-500">Sprint</span>
-        </h1>
+        <div>
+          <h1 className="max-w-md font-display text-4xl font-semibold leading-tight text-blueprint-900 sm:text-5xl">
+            Build your dream tech team with AI.
+          </h1>
+          <p className="mt-4 max-w-sm text-ink/60">
+            Connect your GitHub, tell us your skills, and let AI match you to teammates and side
+            projects worth shipping.
+          </p>
+        </div>
 
-        <p className="text-gray-300 font-semibold text-lg mb-3">
-          Find the right teammates and build amazing projects with AI.
-        </p>
+        <div>
+          <button onClick={signInWithGithub} className="btn-primary">
+            <Github size={18} /> Continue with GitHub
+          </button>
+        </div>
+      </div>
 
-        <p className="text-gray-500 text-sm mb-8">
-          Connect your GitHub account to get started.
-        </p>
-
-        <button
-          onClick={handleGitHubLogin}
-          className="w-full flex items-center justify-center gap-3 bg-white text-gray-900 font-semibold py-3 px-6 rounded-xl hover:bg-gray-100 transition-all duration-200 text-sm"
-        >
-          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
-          </svg>
-          Continue with GitHub
-        </button>
-
-        <p className="text-gray-600 text-xs mt-6">
-          By signing in, you agree to our Terms of Service
-        </p>
+      <div className="grid-texture hidden items-center justify-center border-l border-gridline p-16 md:flex">
+        <div className="max-w-sm rounded-2xl border border-gridline bg-white/90 p-6 shadow-sm backdrop-blur">
+          <p className="mb-4 text-xs font-medium uppercase tracking-wide text-ink/40">
+            Your contribution score is earned, not guessed
+          </p>
+          <ScoreMechanic />
+          <p className="mt-5 text-sm text-ink/60">
+            No vanity metrics. Your score only moves when a project owner actually reviews and
+            marks your work done, inside that project's Project Room.
+          </p>
+        </div>
       </div>
     </div>
   )

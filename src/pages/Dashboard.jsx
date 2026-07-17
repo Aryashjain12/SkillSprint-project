@@ -1,141 +1,104 @@
-import { useEffect, useState } from 'react'
-import { supabase } from '../supabaseClient'
-import { useNavigate } from 'react-router-dom'
+import React, { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { Compass, FolderKanban, Inbox, PlusCircle, TrendingUp } from 'lucide-react'
+import Navbar from '../components/Navbar.jsx'
+import SkillChip from '../components/SkillChip.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
+import { listInvitations, respondToInvitation } from '../lib/projects'
 
 export default function Dashboard() {
-  const [profile, setProfile] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const navigate = useNavigate()
+  const { profile } = useAuth()
+  const [invitations, setInvitations] = useState([])
 
   useEffect(() => {
-    const getProfile = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { navigate('/'); return }
+    if (profile) listInvitations(profile.id).then(setInvitations).catch(console.error)
+  }, [profile])
 
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
-
-      if (error || !profile) {
-        // Profile not set up yet
-        navigate('/profile')
-        return
-      }
-
-      setProfile(profile)
-      setLoading(false)
+  async function handleRespond(inv, accept) {
+    setInvitations((prev) => prev.filter((i) => i.id !== inv.id))
+    try {
+      await respondToInvitation({ invitationId: inv.id, accept })
+    } catch (err) {
+      console.error('Failed to respond to invitation', err)
     }
-    getProfile()
-  }, [])
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    navigate('/')
   }
 
-  // Safe avatar display with multiple fallbacks
-  const getAvatar = (p) => {
-    if (!p) return null
-    return p.avatar_url ||
-      `https://ui-avatars.com/api/?name=${encodeURIComponent(p.full_name || 'U')}&background=6366f1&color=fff&size=128`
-  }
-
-  if (loading) return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-      <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-    </div>
-  )
+  if (!profile) return null
 
   return (
-    <div className="min-h-screen bg-gray-950 px-4 py-6">
-      <div className="max-w-2xl mx-auto">
-
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-2xl font-black text-white">
-            Skill<span className="text-indigo-500">Sprint</span>
-          </h1>
-          <div className="flex items-center gap-3">
-            <img
-              src={getAvatar(profile)}
-              alt={profile.full_name}
-              className="w-9 h-9 rounded-full border-2 border-indigo-500 object-cover"
-              onError={(e) => {
-                e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.full_name || 'U')}&background=6366f1&color=fff&size=128`
-              }}
-            />
-            <button
-              onClick={handleSignOut}
-              className="text-gray-400 text-sm hover:text-white transition-colors"
-            >
-              Sign Out
-            </button>
+    <div className="min-h-screen bg-paper">
+      <Navbar />
+      <main className="mx-auto max-w-5xl px-6 py-10">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <img src={profile.avatar_url} alt="" className="h-14 w-14 rounded-full border border-gridline object-cover" />
+            <div>
+              <h1 className="font-display text-2xl font-semibold text-blueprint-900">Hello, {profile.full_name} 👋</h1>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {profile.skills.map((s) => (
+                  <SkillChip key={s}>{s}</SkillChip>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 rounded-lg border border-moss/30 bg-moss-light px-3 py-1.5 text-moss">
+            <TrendingUp size={16} />
+            <span className="font-display text-lg font-semibold">{profile.contribution_score ?? 50}</span>
+            <span className="text-xs font-medium">contribution score</span>
           </div>
         </div>
 
-        {/* Welcome */}
-        <h2 className="text-3xl font-black text-white mb-6">
-          Welcome, {profile.full_name?.split(' ')[0]} 👋
-        </h2>
+        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <Link to="/post-project" className="card group flex flex-col items-start gap-2 transition hover:border-signal">
+            <PlusCircle className="text-signal" size={22} />
+            <p className="font-display font-semibold">Post a project</p>
+            <p className="text-sm text-ink/60">Describe an idea and let AI staff it for you.</p>
+          </Link>
+          <Link to="/discover" className="card group flex flex-col items-start gap-2 transition hover:border-blueprint-500">
+            <Compass className="text-blueprint-700" size={22} />
+            <p className="font-display font-semibold">Discover projects</p>
+            <p className="text-sm text-ink/60">AI-recommended builds that match your skills.</p>
+          </Link>
+          <Link to="/my-projects" className="card group flex flex-col items-start gap-2 transition hover:border-moss">
+            <FolderKanban className="text-moss" size={22} />
+            <p className="font-display font-semibold">My projects</p>
+            <p className="text-sm text-ink/60">Track what's in progress and what shipped.</p>
+          </Link>
+        </div>
 
-        {/* Profile Summary Card */}
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 mb-6">
-  <div className="grid grid-cols-3 gap-4">
-
-    {/* Your Skills */}
-    <div className="bg-gray-800 rounded-xl p-4">
-      <p className="text-gray-400 text-xs font-semibold mb-2">💻 Your Skills</p>
-      <div className="flex flex-wrap gap-2">
-        {(profile.skills || []).slice(0, 8).map((s) => (
-          <span
-            key={s}
-            className="bg-indigo-900 text-indigo-200 text-xs px-3 py-1 rounded-full"
-          >
-            {s}
-          </span>
-        ))}
-        {(profile.skills || []).length > 8 && (
-          <span className="bg-gray-700 text-gray-300 text-xs px-3 py-1 rounded-full">
-            +{profile.skills.length - 8} more
-          </span>
-        )}
-      </div>
-    </div>
-
-    {/* Repositories */}
-    <div className="bg-gray-800 rounded-xl p-4 text-center flex flex-col justify-center">
-      <p className="text-gray-400 text-xs mb-2">Repositories</p>
-      <p className="text-3xl font-black text-white">
-        {profile.total_repos || 0}
-      </p>
-    </div>
-
-    {/* Contribution Score */}
-    <div className="bg-gray-800 rounded-xl p-4 text-center flex flex-col justify-center">
-      <p className="text-gray-400 text-xs mb-2">Contribution Score</p>
-      <p className="text-3xl font-black text-indigo-400">
-        {profile.contribution_score || 0}
-      </p>
-    </div>
-
-  </div>
-</div>
-
-        {/* Post Project Button */}
-        <button
-          onClick={() => navigate('/post-project')}
-          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-5 rounded-2xl text-xl transition-all hover:scale-[1.01] active:scale-[0.99] shadow-lg shadow-indigo-900/30"
-        >
-          Post a Project
-        </button>
-
-        <p className="text-center text-gray-600 text-xs mt-4">
-          Describe your idea and let AI find the best teammates for you
-        </p>
-
-      </div>
+        <section className="mt-10">
+          <h2 className="mb-3 flex items-center gap-2 font-display text-lg font-semibold text-blueprint-900">
+            <Inbox size={18} /> Recent invitations
+          </h2>
+          <div className="flex flex-col gap-3">
+            {invitations.map((inv) => (
+              <div key={inv.id} className="card flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <img src={inv.from.avatar_url} alt="" className="h-9 w-9 rounded-full border border-gridline object-cover" />
+                  <div>
+                    <p className="text-sm font-semibold text-blueprint-900">{inv.project_title}</p>
+                    <p className="text-xs text-ink/60">
+                      {inv.type === 'request' ? `${inv.from.full_name} wants to join` : `Invited by ${inv.from.full_name}`}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Link
+                    to={`/discover/${inv.project_id}`}
+                    state={{ invitation: inv }}
+                    className="text-xs font-semibold text-blueprint-700 hover:underline"
+                  >
+                    View details
+                  </Link>
+                  <button onClick={() => handleRespond(inv, false)} className="btn-secondary !px-3 !py-1.5 text-xs">Decline</button>
+                  <button onClick={() => handleRespond(inv, true)} className="btn-primary !px-3 !py-1.5 text-xs">Accept</button>
+                </div>
+              </div>
+            ))}
+            {invitations.length === 0 && <p className="text-sm text-ink/40">No invitations yet.</p>}
+          </div>
+        </section>
+      </main>
     </div>
   )
 }
