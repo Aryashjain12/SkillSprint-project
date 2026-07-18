@@ -25,16 +25,6 @@ export function AuthProvider({ children }) {
     return () => listener.subscription.unsubscribe()
   }, [])
 
-  // Loads/creates the `profiles` row for the current session.
-  //
-  // IMPORTANT: `session.provider_token` (the GitHub token) is only present
-  // right after the OAuth redirect — Supabase does NOT resend it on a
-  // restored session (page refresh, new tab, coming back later). Earlier
-  // this effect bailed out whenever provider_token was missing, which left
-  // `profile` stuck at null forever on any returning session — a blank
-  // screen with no error. Now: only use provider_token to pull fresh
-  // GitHub data on an actual new login; otherwise just load the existing
-  // `profiles` row by user id, which works on every return visit.
   useEffect(() => {
     async function syncProfile() {
       if (!session) return
@@ -53,7 +43,7 @@ export function AuthProvider({ children }) {
             github_username: gh.github_username,
             full_name: gh.full_name,
             avatar_url: gh.avatar_url,
-            bio: gh.bio,
+            bio: existing?.bio ?? gh.bio,
             repo_count: gh.repo_count,
             skills: existing?.skills ?? gh.inferred_skills,
             contribution_score: existing?.contribution_score ?? 50
@@ -64,8 +54,6 @@ export function AuthProvider({ children }) {
         } else if (existing) {
           setProfile(existing)
         } else {
-          // Session exists but there's no profile row and no GitHub token
-          // to create one from — surface this instead of hanging.
           setProfileError("Couldn't load your profile. Try signing out and back in.")
         }
       } catch (err) {
@@ -74,7 +62,6 @@ export function AuthProvider({ children }) {
       }
     }
     syncProfile()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session])
 
   async function signInWithGithub() {
