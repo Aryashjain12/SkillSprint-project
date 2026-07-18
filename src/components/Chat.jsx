@@ -13,8 +13,6 @@ export default function Chat({ projectId, initialMessages = [] }) {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  // Subscribe to a Supabase Realtime channel scoped to this project so new
-  // messages appear instantly for every member.
   useEffect(() => {
     const channel = supabase
       .channel(`project-chat-${projectId}`)

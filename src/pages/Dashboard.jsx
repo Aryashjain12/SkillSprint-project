@@ -34,6 +34,7 @@ export default function Dashboard() {
             <img src={profile.avatar_url} alt="" className="h-14 w-14 rounded-full border border-gridline object-cover" />
             <div>
               <h1 className="font-display text-2xl font-semibold text-blueprint-900">Hello, {profile.full_name} 👋</h1>
+              {profile.bio && <p className="mt-1 text-sm text-ink/60">{profile.bio}</p>}
               <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {profile.skills.map((s) => (
                   <SkillChip key={s}>{s}</SkillChip>

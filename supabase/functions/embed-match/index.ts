@@ -1,22 +1,3 @@
-// SkillSprint — embed-match Edge Function
-// Deploy with: supabase functions deploy embed-match
-// Requires secrets: GEMINI_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
-// (the last two are injected automatically by Supabase at deploy time)
-//
-// Uses Google's Gemini models (free tier available) instead of OpenAI —
-// get a key at https://aistudio.google.com/apikey, then:
-//   supabase secrets set GEMINI_API_KEY=AI...
-//
-// Two different Gemini capabilities are used here, for two different jobs:
-// - gemini-embedding-2 (embeddings): for AI Teammate Matching and
-//   Discover Projects recommendations — genuinely open-ended similarity
-//   scoring, nothing hardcoded, works for any skills/text.
-// - gemini-3.1-flash-lite (generateContent): for Post Project's "AI
-//   Suggestions". This USED to rank a fixed 9-skill shortlist by embedding
-//   similarity, which meant it could never suggest anything outside that
-//   list (e.g. "API" for an AI resume analyzer) no matter how relevant.
-//   Asking a generative model directly for skills removes that ceiling.
-
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 
@@ -39,12 +20,7 @@ function getApiKey(): string {
   return apiKey
 }
 
-// The Gemini free tier has a strict requests-per-minute limit. Firing
-// several calls at once with Promise.all() bursts straight past it —
-// Gemini returns 429, which becomes a 500 from this function ("non-2xx
-// status code" is exactly what supabase-js prints for that in the
-// browser). Calling one at a time, with a small gap and retry/backoff on
-// 429, keeps every request in a batch under the limit.
+
 async function embed(text: string, attempt = 1): Promise<number[]> {
   const res = await fetch(`${EMBED_URL}?key=${getApiKey()}`, {
     method: 'POST',
@@ -52,8 +28,6 @@ async function embed(text: string, attempt = 1): Promise<number[]> {
     body: JSON.stringify({
       model: 'models/gemini-embedding-2',
       content: { parts: [{ text }] },
-      // Matches the vector(1536) columns in schema.sql (Gemini defaults to
-      // 3072 dims but supports truncating via Matryoshka representation).
       outputDimensionality: 1536
     })
   })
@@ -70,7 +44,6 @@ async function embed(text: string, attempt = 1): Promise<number[]> {
   return json.embedding.values
 }
 
-/** Runs embed() one text at a time instead of in parallel — see note above. */
 async function embedSequential(texts: string[]): Promise<number[][]> {
   const results: number[][] = []
   for (const text of texts) {
@@ -80,10 +53,7 @@ async function embedSequential(texts: string[]): Promise<number[][]> {
   return results
 }
 
-/**
- * Asks Gemini directly for suggested skills/difficulty/team size, as JSON.
- * Genuinely open-ended — not limited to any predefined list.
- */
+
 async function generateSuggestions(title: string, description: string, attempt = 1): Promise<any> {
   const prompt = `You are helping staff a software project. Given this project, suggest:
 - "skills": an array of 3-5 specific technical skills/technologies actually needed (be specific — e.g. "OpenAI API" not just "AI", "PostgreSQL" not just "database" — and include any skill implied by the domain, like NLP/LLM APIs for AI-driven tools, payment APIs for checkout flows, etc.)
@@ -168,11 +138,10 @@ serve(async (req) => {
         ...p,
         match_percent: Math.round(cosineSimilarity(userEmbedding, projectEmbeddings[i]) * 100)
       }))
-      matches.sort((a: any, b: any) => b.match_percent - a.match_percent)
+      matches.sort((a: any, b: any) => b.match_percent - a.match_percent || String(a.id).localeCompare(String(b.id)))
       return new Response(JSON.stringify({ matches }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // ---- Mode 3 (default): AI Teammate Matching ----
     const { projectDescription, requiredSkills, candidates } = body
     const projectText = `${projectDescription}\nRequired skills: ${requiredSkills.join(', ')}`
     const candidateTexts = candidates.map(
@@ -196,7 +165,7 @@ serve(async (req) => {
       await supabase.from('projects').update({ embedding: projectEmbedding }).eq('id', body.projectId)
     }
 
-    matches.sort((a: any, b: any) => b.match_percent - a.match_percent)
+    matches.sort((a: any, b: any) => b.match_percent - a.match_percent || String(a.id).localeCompare(String(b.id)))
     return new Response(JSON.stringify({ matches }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   } catch (err) {
     return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })

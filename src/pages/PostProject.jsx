@@ -32,9 +32,6 @@ export default function PostProject() {
     setSkillDraft('')
   }
 
-  // Enter in the skill box should add a skill, not submit the whole
-  // project — there is no nested <form> here anymore, so this has to be
-  // handled explicitly instead of relying on a second submit handler.
   function handleSkillKeyDown(e) {
     if (e.key === 'Enter') {
       e.preventDefault()
@@ -131,7 +128,7 @@ export default function PostProject() {
                 value={skillDraft}
                 onChange={(e) => setSkillDraft(e.target.value)}
                 onKeyDown={handleSkillKeyDown}
-                placeholder="e.g. React"
+                placeholder="e.g. ML"
                 className="input"
               />
               <button type="button" onClick={addSkill} className="btn-secondary !px-4 text-sm">Add</button>
@@ -171,7 +168,7 @@ export default function PostProject() {
               className="input"
             />
             <p className="mt-1 text-xs text-ink/40">
-              You can add this later too — until then, Project Room links to your GitHub profile instead.
+              You can add this later too.
             </p>
           </div>
 

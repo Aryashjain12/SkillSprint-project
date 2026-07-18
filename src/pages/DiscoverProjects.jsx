@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Search, Sparkles } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import ProjectCard from '../components/ProjectCard.jsx'
@@ -16,64 +16,74 @@ export default function DiscoverProjects() {
   const [joinError, setJoinError] = useState('')
   const [memberProjectIds, setMemberProjectIds] = useState(new Set())
   const [requestedProjectIds, setRequestedProjectIds] = useState(new Set())
+  const [statusesLoaded, setStatusesLoaded] = useState(false)
+  const recRunId = useRef(0)
 
   useEffect(() => {
     listDiscoverProjects().then(setAllProjects).catch(console.error)
   }, [])
 
-  // Drives both "hide projects I'm already part of" (including ones I
-  // posted myself — the owner is always a project_members row) and
-  // "keep showing Request sent after a refresh" for the rest.
   useEffect(() => {
     if (!profile) return
-    getJoinStatuses(profile.id).then(({ memberProjectIds, requestedProjectIds }) => {
-      setMemberProjectIds(memberProjectIds)
-      setRequestedProjectIds(requestedProjectIds)
-    }).catch(console.error)
+    getJoinStatuses(profile.id)
+      .then(({ memberProjectIds, requestedProjectIds }) => {
+        setMemberProjectIds(memberProjectIds)
+        setRequestedProjectIds(requestedProjectIds)
+      })
+      .catch(console.error)
+      .finally(() => setStatusesLoaded(true))
   }, [profile])
 
-  // Everything below — Recommended and Explore More — excludes projects
-  // the user already owns or has joined. Discover is for finding a new
-  // team, not for re-showing your own.
-  const projects = useMemo(
-    () => allProjects.filter((p) => !memberProjectIds.has(p.id)),
-    [allProjects, memberProjectIds]
+
+  const recommendableProjects = useMemo(
+    () => allProjects.filter((p) => !memberProjectIds.has(p.id) && !requestedProjectIds.has(p.id)),
+    [allProjects, memberProjectIds, requestedProjectIds]
   )
 
-  // Real AI recommendations: rank the fetched projects against this user's
-  // skills/bio instead of trusting any static match_percent on the data.
   useEffect(() => {
+   
+    if (!statusesLoaded) return
+
+    const runId = ++recRunId.current
+
     async function run() {
-      if (!profile || projects.length === 0) return
+      if (!profile || recommendableProjects.length === 0) {
+        if (runId === recRunId.current) {
+          setRecommended([])
+          setLoadingRecs(false)
+        }
+        return
+      }
       setLoadingRecs(true)
       setRecError('')
       try {
         const ranked = await matchProjectsForUser({
           userSkills: profile.skills || [],
           userBio: profile.bio || '',
-          projects
+          projects: recommendableProjects
         })
-        setRecommended(ranked.slice(0, 3))
+        if (runId === recRunId.current) setRecommended(ranked.slice(0, 3))
       } catch (err) {
         console.error('Project matching failed', err)
-        // Still show something rather than an empty section, but say so —
-        // this is NOT ranked by AI, so it shouldn't look like it is.
-        setRecError(err.message || 'AI matching is unavailable right now — showing recent projects instead.')
-        setRecommended(projects.slice(0, 3))
+        if (runId === recRunId.current) {
+          setRecError(err.message || 'AI matching is unavailable right now — showing recent projects instead.')
+          setRecommended(recommendableProjects.slice(0, 3))
+        }
       } finally {
-        setLoadingRecs(false)
+        if (runId === recRunId.current) setLoadingRecs(false)
       }
     }
     run()
-  }, [profile, projects])
+  }, [profile, recommendableProjects, statusesLoaded])
 
+  
   const filtered = useMemo(() => {
-    if (!query.trim()) return projects
+    if (!query.trim()) return allProjects
     const q = query.toLowerCase()
-    return projects.filter(
+    return allProjects.filter(
       (p) => p.title.toLowerCase().includes(q) || p.required_skills.some((s) => s.toLowerCase().includes(q))
     )
-  }, [projects, query])
+  }, [allProjects, query])
 
   async function requestJoin(project) {
     setRequestedProjectIds((prev) => new Set(prev).add(project.id))
@@ -97,6 +107,7 @@ export default function DiscoverProjects() {
   }
 
   function statusFor(project) {
+    if (memberProjectIds.has(project.id)) return 'member'
     if (requestedProjectIds.has(project.id)) return 'requested'
     return null
   }
@@ -131,7 +142,7 @@ export default function DiscoverProjects() {
               {recommended.map((p) => (
                 <ProjectCard key={p.id} project={p} onRequestJoin={requestJoin} joinStatus={statusFor(p)} />
               ))}
-              {recommended.length === 0 && <p className="text-sm text-ink/40">No other projects to recommend right now.</p>}
+              {recommended.length === 0 && <p className="text-sm text-ink/40">No new projects to recommend right now.</p>}
             </div>
           )}
         </section>

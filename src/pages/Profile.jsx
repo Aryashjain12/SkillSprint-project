@@ -10,6 +10,7 @@ export default function Profile() {
   const { profile, setProfile } = useAuth()
   const navigate = useNavigate()
   const [skills, setSkills] = useState(profile?.skills || [])
+  const [bio, setBio] = useState(profile?.bio || '')
   const [draft, setDraft] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -22,8 +23,8 @@ export default function Profile() {
 
   async function save() {
     setSaving(true)
-    await supabase.from('profiles').update({ skills }).eq('id', profile.id)
-    setProfile({ ...profile, skills })
+    await supabase.from('profiles').update({ skills, bio }).eq('id', profile.id)
+    setProfile({ ...profile, skills, bio })
     setSaving(false)
     navigate('/dashboard')
   }
@@ -52,13 +53,27 @@ export default function Profile() {
           <div>
             <p className="label !mb-0.5">Contribution score</p>
             <p className="text-xs text-ink/50">
-              Rises only when a project owner reviews and marks your task done in a Project Room.
+             Complete tasks. Earn trust. Grow your reputation.
             </p>
           </div>
           <div className="flex items-center gap-1.5 rounded-lg border border-moss/30 bg-moss-light px-3 py-1.5 text-moss">
             <TrendingUp size={16} />
             <span className="font-display text-lg font-semibold">{profile.contribution_score ?? 50}</span>
           </div>
+        </div>
+
+        <div className="card mt-4">
+          <label className="label">Bio</label>
+          <p className="mb-2 text-xs text-ink/50">
+          Share what you build, what you're learning, and what kind of projects excite you.
+          </p>
+          <textarea
+            rows={3}
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
+            placeholder="e.g.Frontend developer passionate about React and AI. Looking to collaborate on impactful open-source and startup projects."
+            className="input"
+          />
         </div>
 
         <div className="card mt-4">

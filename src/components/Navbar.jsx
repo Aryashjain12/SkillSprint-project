@@ -4,8 +4,7 @@ import { Compass, FolderKanban, LogOut, PlusCircle, Sparkles } from 'lucide-reac
 import { useAuth } from '../context/AuthContext.jsx'
 
 function Logo() {
-  // Signature mark: a 3x3 "contribution graph" grid — a nod to GitHub's
-  // heatmap, standing in for a team of contributors coming together.
+
   const shades = ['bg-blueprint-100', 'bg-blueprint-300', 'bg-signal', 'bg-moss']
   const pattern = [1, 2, 0, 2, 3, 1, 0, 1, 2]
   return (

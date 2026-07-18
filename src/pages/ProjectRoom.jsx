@@ -16,9 +16,6 @@ import {
   completeProject
 } from '../lib/projects'
 
-// Owner earns a smaller bump than the assignee for the act of reviewing —
-// they're not the one who did the task, but reviewing/managing is real
-// contribution too.
 const OWNER_REVIEW_BONUS = 3
 
 export default function ProjectRoom() {
@@ -34,7 +31,6 @@ export default function ProjectRoom() {
   useEffect(() => {
     getProject(id).then((p) => {
       setProject(p)
-      // Clone so score bumps here don't mutate the shared demo dataset.
       setMembers((p.members || []).map((m) => ({ ...m })))
     }).catch(console.error)
     getProjectTasks(id).then(setTasks).catch(console.error)
@@ -46,9 +42,6 @@ export default function ProjectRoom() {
     setTasks((t) => ({ ...t, todo: [...t.todo, task] }))
   }
 
-  // Moves a task between To Do / In Progress / Done. Permission (owner or
-  // the task's own assignee) is enforced in Kanban.jsx before this is ever
-  // called, but we still trust the caller here rather than re-checking.
   async function moveTask(taskId, fromColumn, toColumn) {
     setTasks((t) => {
       const task = t[fromColumn].find((x) => x.id === taskId)
@@ -73,10 +66,6 @@ export default function ProjectRoom() {
     }
   }
 
-  // Reviewing a task is the only thing that moves a member's contribution
-  // score up — matches the mechanic explained on the Login page. The
-  // assignee gets the main bump; the owner gets a smaller one too, since
-  // reviewing/managing is its own kind of contribution.
   async function reviewTask(taskId) {
     const task = tasks.done.find((t) => t.id === taskId)
     if (!task || task.reviewed) return
@@ -97,8 +86,6 @@ export default function ProjectRoom() {
     }
   }
 
-  // "Needs changes" — sends a Done task back to In Progress instead of
-  // reviewing it. No score change; it's just not accepted yet.
   async function requestChanges(taskId) {
     await moveTask(taskId, 'done', 'inProgress')
   }

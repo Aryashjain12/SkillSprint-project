@@ -43,7 +43,7 @@ export default function ProjectCard({ project, onRequestJoin, joinStatus }) {
           <Link to={`/discover/${project.id}`} className="text-xs font-semibold text-blueprint-700 hover:underline">
             View details
           </Link>
-          {joinStatus === 'requested' ? (
+          {joinStatus === 'member' ? null : joinStatus === 'requested' ? (
             <span className="btn-secondary !cursor-default !px-3 !py-1.5 text-xs">Request sent</span>
           ) : (
             onRequestJoin && !isFull && (

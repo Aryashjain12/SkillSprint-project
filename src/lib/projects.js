@@ -5,6 +5,7 @@ export async function listDiscoverProjects() {
     .from('projects')
     .select('*, owner:profiles(*), project_members(count)')
     .eq('status', 'recruiting')
+    .order('created_at', { ascending: false })
   if (error) throw error
   return data.map((p) => ({ ...p, member_count: p.project_members?.[0]?.count ?? 0 }))
 }
@@ -55,10 +56,7 @@ export async function createProject(payload) {
   const { data, error } = await supabase.from('projects').insert(payload).select().single()
   if (error) throw error
 
-  // Without this, the owner never shows up in project_members — which
-  // means their own posted project wouldn't appear on My Projects, and
-  // Project Room's member list / task-assignee dropdown would be missing
-  // them entirely.
+
   const { error: memberError } = await supabase
     .from('project_members')
     .insert({ project_id: data.id, user_id: payload.owner_id, role: 'owner' })
@@ -68,8 +66,8 @@ export async function createProject(payload) {
 }
 
 /**
- * Owner marks a project finished — moves it from Active to Completed on
- * My Projects.
+ Owner marks a project finished — moves it from Active to Completed on
+ My Projects.
  */
 export async function completeProject(projectId) {
   const { error } = await supabase.from('projects').update({ status: 'completed', progress: 100 }).eq('id', projectId)
@@ -97,12 +95,7 @@ export async function addTask({ projectId, title, assigneeId, assigneeName }) {
   return { id: data.id, title: data.title, assignee: data.assignee, assigneeId: data.assignee_id, reviewed: data.reviewed }
 }
 
-/**
- * Moves a task between columns (To Do → In Progress → Done). Allowed for
- * the project owner or the task's own assignee — enforced in the UI
- * (Kanban.jsx's canMove) since this is a small hackathon app without
- * per-row RLS distinguishing "my own assigned task" yet.
- */
+
 export async function moveTaskColumn(taskId, columnKey) {
   const { error } = await supabase.from('tasks').update({ column_key: columnKey }).eq('id', taskId)
   if (error) throw error
@@ -113,13 +106,6 @@ export async function markTaskReviewed(taskId) {
   if (error) throw error
 }
 
-/**
- * Accept/Decline an invitation OR a join request. Reads the invitation
- * itself to figure out who should actually end up in project_members:
- * - type 'invite' (owner → candidate): the candidate (to_user_id) joins.
- * - type 'request' (candidate → owner): the requester (from_user_id)
- *   joins — the owner (to_user_id) is just the one approving it.
- */
 export async function respondToInvitation({ invitationId, accept }) {
   const { data: invitation, error: fetchError } = await supabase
     .from('invitations')
@@ -143,9 +129,7 @@ export async function respondToInvitation({ invitationId, accept }) {
   }
 }
 
-/**
- * Owner invites a candidate to their project from AI Teammate Matching.
- */
+
 export async function sendInvitation({ projectId, fromUserId, toUserId, message }) {
   const { error } = await supabase
     .from('invitations')
@@ -153,14 +137,7 @@ export async function sendInvitation({ projectId, fromUserId, toUserId, message 
   if (error) throw error
 }
 
-/**
- * "Request to join" from Discover Projects / Project Details. This no
- * longer joins immediately — it creates a pending 'request' invitation
- * addressed to the project owner, who approves/declines it from their
- * Dashboard (or the project's Details page) just like any other
- * invitation. Actual membership only happens on accept, via
- * respondToInvitation() above.
- */
+
 export async function sendJoinRequest({ projectId, fromUserId, toUserId, message }) {
   const { error } = await supabase
     .from('invitations')
@@ -168,12 +145,7 @@ export async function sendJoinRequest({ projectId, fromUserId, toUserId, message
   if (error) throw error
 }
 
-/**
- * Tells the UI, for every project, whether the current user is already a
- * member (including projects they own) or already has a pending join
- * request out — so "Request to Join" doesn't reappear after a refresh,
- * and a project you're already part of doesn't show up as joinable.
- */
+
 export async function getJoinStatuses(userId) {
   const [{ data: memberships, error: e1 }, { data: pending, error: e2 }] = await Promise.all([
     supabase.from('project_members').select('project_id').eq('user_id', userId),
@@ -186,12 +158,6 @@ export async function getJoinStatuses(userId) {
     requestedProjectIds: new Set((pending || []).map((r) => r.project_id))
   }
 }
-
-/**
- * Turns common Postgres errors from sendJoinRequest()/respondToInvitation()
- * into messages a person can actually act on, instead of a generic
- * "could not send request" for every possible failure.
- */
 export function describeJoinError(err) {
   const msg = err?.message || ''
   if (msg.includes('already full')) return 'This team is already full.'
@@ -207,10 +173,6 @@ export async function getProjectMessages(projectId) {
   return data
 }
 
-/**
- * Bumps a member's contribution score once the project owner marks their
- * reviewed task done.
- */
 export async function bumpContributionScore(userId, currentScore, delta = 8) {
   const nextScore = Math.min(100, currentScore + delta)
   const { error } = await supabase.from('profiles').update({ contribution_score: nextScore }).eq('id', userId)

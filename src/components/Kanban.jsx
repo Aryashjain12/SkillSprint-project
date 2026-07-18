@@ -19,15 +19,12 @@ export default function Kanban({ tasks, isOwner, currentUserId, ownerId, members
     setTitle('')
   }
 
-  // The owner can move anything; otherwise only the person a task is
-  // assigned to can move their own task forward.
+  
   function canMove(task) {
     return isOwner || task.assigneeId === currentUserId
   }
 
-  // Normally only the owner reviews Done work. But if the owner assigned
-  // a task to themselves, they can't fairly review their own work — so
-  // any other member on the project reviews it instead.
+  
   function canReview(task) {
     const isOwnersOwnTask = task.assigneeId === ownerId
     if (isOwnersOwnTask) return currentUserId !== ownerId
