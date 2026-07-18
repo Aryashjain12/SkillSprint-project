@@ -29,7 +29,7 @@ export default function Login() {
 
         <div>
           <h1 className="font-display text-4xl font-semibold leading-tight text-blueprint-900 sm:text-5xl">
-            Build your dream tech team with AI.
+            AI-Powered Developer Collaboration Platform
           </h1>
 
           <p className="mt-4 text-ink/60">
