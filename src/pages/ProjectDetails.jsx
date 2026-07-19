@@ -5,7 +5,7 @@ import Navbar from '../components/Navbar.jsx'
 import SkillChip from '../components/SkillChip.jsx'
 import MatchBadge from '../components/MatchBadge.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
-import { getProject, sendJoinRequest, respondToInvitation, describeJoinError, getJoinStatuses } from '../lib/projects'
+import { getProject, sendJoinRequest, respondToInvitation, describeJoinError, getJoinStatuses, cancelJoinRequest } from '../lib/projects'
 
 export default function ProjectDetails() {
   const { id } = useParams()
@@ -15,7 +15,8 @@ export default function ProjectDetails() {
   const invitation = location.state?.invitation || null
 
   const [project, setProject] = useState(null)
-  const [joinStatus, setJoinStatus] = useState(null) // 'member' | 'requested' | null
+  const [joinStatus, setJoinStatus] = useState(null) 
+  const [requestInvitationId, setRequestInvitationId] = useState(null)
   const [responded, setResponded] = useState(false)
   const [joinError, setJoinError] = useState('')
 
@@ -23,26 +24,39 @@ export default function ProjectDetails() {
     getProject(id).then(setProject).catch(console.error)
   }, [id])
 
-  // Persist "already requested" / "already a member" across a refresh —
-  // without this, the button used to reset to "Request to Join" every
-  // reload even though a request (or membership) already existed.
-  useEffect(() => {
+  
+ useEffect(() => {
     if (!profile) return
-    getJoinStatuses(profile.id).then(({ memberProjectIds, requestedProjectIds }) => {
+    getJoinStatuses(profile.id).then(({ memberProjectIds, requestedProjectIds, requestedProjectMap }) => {
       if (memberProjectIds.has(id)) setJoinStatus('member')
-      else if (requestedProjectIds.has(id)) setJoinStatus('requested')
+      else if (requestedProjectIds.has(id)) {
+        setJoinStatus('requested')
+        setRequestInvitationId(requestedProjectMap.get(id))
+      }
     }).catch(console.error)
   }, [profile, id])
 
-  async function requestJoin() {
+ async function requestJoin() {
     setJoinStatus('requested')
     setJoinError('')
     try {
-      await sendJoinRequest({ projectId: id, fromUserId: profile.id, toUserId: project.owner.id, message: `${profile.full_name} wants to join ${project.title}.` })
+      const newId = await sendJoinRequest({ projectId: id, fromUserId: profile.id, toUserId: project.owner.id, message: `${profile.full_name} wants to join ${project.title}.` })
+      setRequestInvitationId(newId)
     } catch (err) {
       console.error('Failed to send join request', err)
       setJoinStatus(null)
       setJoinError(describeJoinError(err))
+    }
+  }
+
+  async function cancelRequest() {
+    if (!requestInvitationId) return
+    setJoinStatus(null)
+    try {
+      await cancelJoinRequest(requestInvitationId)
+    } catch (err) {
+      console.error('Failed to cancel request', err)
+      setJoinStatus('requested')
     }
   }
 
@@ -110,13 +124,11 @@ export default function ProjectDetails() {
           <p className="mt-8 text-sm font-semibold text-moss">You're already part of this project.</p>
         ) : (
           <>
-            <button
-              onClick={requestJoin}
-              disabled={joinStatus === 'requested'}
-              className={joinStatus === 'requested' ? 'btn-secondary mt-8 !cursor-default' : 'btn-primary mt-8'}
-            >
-              {joinStatus === 'requested' ? 'Request sent' : 'Request to join'}
-            </button>
+            {joinStatus === 'requested' ? (
+              <button onClick={cancelRequest} className="btn-secondary mt-8">Cancel request</button>
+            ) : (
+              <button onClick={requestJoin} className="btn-primary mt-8">Request to join</button>
+            )}
             {joinError && <p className="mt-2 text-xs text-signal">{joinError}</p>}
           </>
         )}

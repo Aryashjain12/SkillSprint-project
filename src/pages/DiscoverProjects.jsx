@@ -3,7 +3,7 @@ import { Search, Sparkles } from 'lucide-react'
 import Navbar from '../components/Navbar.jsx'
 import ProjectCard from '../components/ProjectCard.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
-import { listDiscoverProjects, sendJoinRequest, describeJoinError, getJoinStatuses } from '../lib/projects'
+import { listDiscoverProjects, sendJoinRequest, describeJoinError, getJoinStatuses, cancelJoinRequest } from '../lib/projects'
 import { matchProjectsForUser } from '../lib/aiMatch'
 
 export default function DiscoverProjects() {
@@ -16,6 +16,7 @@ export default function DiscoverProjects() {
   const [joinError, setJoinError] = useState('')
   const [memberProjectIds, setMemberProjectIds] = useState(new Set())
   const [requestedProjectIds, setRequestedProjectIds] = useState(new Set())
+  const [requestedProjectMap, setRequestedProjectMap] = useState(new Map())
   const [statusesLoaded, setStatusesLoaded] = useState(false)
   const recRunId = useRef(0)
 
@@ -26,9 +27,10 @@ export default function DiscoverProjects() {
   useEffect(() => {
     if (!profile) return
     getJoinStatuses(profile.id)
-      .then(({ memberProjectIds, requestedProjectIds }) => {
+      .then(({ memberProjectIds, requestedProjectIds, requestedProjectMap }) => {
         setMemberProjectIds(memberProjectIds)
         setRequestedProjectIds(requestedProjectIds)
+        setRequestedProjectMap(requestedProjectMap)
       })
       .catch(console.error)
       .finally(() => setStatusesLoaded(true))
@@ -89,12 +91,13 @@ export default function DiscoverProjects() {
     setRequestedProjectIds((prev) => new Set(prev).add(project.id))
     setJoinError('')
     try {
-      await sendJoinRequest({
+     const newId = await sendJoinRequest({
         projectId: project.id,
         fromUserId: profile.id,
         toUserId: project.owner.id,
         message: `${profile.full_name} wants to join ${project.title}.`
       })
+      setRequestedProjectMap((prev) => new Map(prev).set(project.id, newId))
     } catch (err) {
       console.error('Failed to send join request', err)
       setRequestedProjectIds((prev) => {
@@ -103,6 +106,21 @@ export default function DiscoverProjects() {
         return next
       })
       setJoinError(describeJoinError(err))
+    }
+  }
+  async function cancelRequest(project) {
+    const invitationId = requestedProjectMap.get(project.id)
+    if (!invitationId) return
+    setRequestedProjectIds((prev) => {
+      const next = new Set(prev)
+      next.delete(project.id)
+      return next
+    })
+    try {
+      await cancelJoinRequest(invitationId)
+    } catch (err) {
+      console.error('Failed to cancel request', err)
+      setRequestedProjectIds((prev) => new Set(prev).add(project.id))
     }
   }
 
@@ -140,7 +158,7 @@ export default function DiscoverProjects() {
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {recommended.map((p) => (
-                <ProjectCard key={p.id} project={p} onRequestJoin={requestJoin} joinStatus={statusFor(p)} />
+                <ProjectCard key={p.id} project={p} onRequestJoin={requestJoin} onCancelRequest={cancelRequest} joinStatus={statusFor(p)} />
               ))}
               {recommended.length === 0 && <p className="text-sm text-ink/40">No new projects to recommend right now.</p>}
             </div>
@@ -151,7 +169,7 @@ export default function DiscoverProjects() {
           <h2 className="mb-3 font-display text-lg font-semibold text-blueprint-900">Explore more</h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((p) => (
-              <ProjectCard key={p.id} project={p} onRequestJoin={requestJoin} joinStatus={statusFor(p)} />
+              <ProjectCard key={p.id} project={p} onRequestJoin={requestJoin} onCancelRequest={cancelRequest} joinStatus={statusFor(p)} />
             ))}
             {filtered.length === 0 && <p className="text-sm text-ink/40">No projects match "{query}".</p>}
           </div>

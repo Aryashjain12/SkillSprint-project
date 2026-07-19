@@ -4,7 +4,7 @@ import { Clock, Users } from 'lucide-react'
 import MatchBadge from './MatchBadge.jsx'
 import SkillChip from './SkillChip.jsx'
 
-export default function ProjectCard({ project, onRequestJoin, joinStatus }) {
+export default function ProjectCard({ project, onRequestJoin, onCancelRequest, joinStatus }) { 
   const filled = project.member_count ?? project.members?.length ?? 0
   const slotsOpen = Math.max(0, project.team_size - filled)
   const isFull = slotsOpen === 0
@@ -43,8 +43,10 @@ export default function ProjectCard({ project, onRequestJoin, joinStatus }) {
           <Link to={`/discover/${project.id}`} className="text-xs font-semibold text-blueprint-700 hover:underline">
             View details
           </Link>
-          {joinStatus === 'member' ? null : joinStatus === 'requested' ? (
-            <span className="btn-secondary !cursor-default !px-3 !py-1.5 text-xs">Request sent</span>
+         {joinStatus === 'member' ? null : joinStatus === 'requested' ? (
+            <button onClick={() => onCancelRequest(project)} className="btn-secondary !px-3 !py-1.5 text-xs">
+              Cancel request
+            </button>
           ) : (
             onRequestJoin && !isFull && (
               <button onClick={() => onRequestJoin(project)} className="btn-primary !px-3 !py-1.5 text-xs">

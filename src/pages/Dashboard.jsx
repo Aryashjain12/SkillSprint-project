@@ -5,6 +5,7 @@ import Navbar from '../components/Navbar.jsx'
 import SkillChip from '../components/SkillChip.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { listInvitations, respondToInvitation } from '../lib/projects'
+import { supabase } from '../lib/supabaseClient'
 
 export default function Dashboard() {
   const { profile } = useAuth()
@@ -13,6 +14,18 @@ export default function Dashboard() {
   useEffect(() => {
     if (profile) listInvitations(profile.id).then(setInvitations).catch(console.error)
   }, [profile])
+
+  useEffect(() => {
+    if (!profile) return
+    const channel = supabase
+      .channel(`invitations-${profile.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'invitations', filter: `to_user_id=eq.${profile.id}` }, () => {
+        listInvitations(profile.id).then(setInvitations).catch(console.error)
+      })
+      .subscribe()
+    return () => supabase.removeChannel(channel)
+  }, [profile])
+
 
   async function handleRespond(inv, accept) {
     setInvitations((prev) => prev.filter((i) => i.id !== inv.id))

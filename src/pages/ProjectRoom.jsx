@@ -13,9 +13,9 @@ import {
   moveTaskColumn,
   markTaskReviewed,
   bumpContributionScore,
-  completeProject
+  completeProject,
+  deleteProject
 } from '../lib/projects'
-
 const OWNER_REVIEW_BONUS = 3
 
 export default function ProjectRoom() {
@@ -100,6 +100,15 @@ export default function ProjectRoom() {
       setCompleting(false)
     }
   }
+  async function handleDelete() {
+    if (!window.confirm('Delete this project permanently? This removes all tasks, messages, and members too — it cannot be undone.')) return
+    try {
+      await deleteProject(id)
+      navigate('/my-projects')
+    } catch (err) {
+      console.error('Failed to delete project', err)
+    }
+  }
 
   if (!project) return null
   const isOwner = project.owner?.id === profile?.id
@@ -143,6 +152,11 @@ export default function ProjectRoom() {
             {isOwner && project.status !== 'completed' && (
               <button onClick={handleComplete} disabled={completing} className="btn-secondary !px-3 !py-1.5 text-xs">
                 <CheckCircle2 size={14} /> {completing ? 'Marking…' : 'Mark project complete'}
+              </button>
+            )}
+            {isOwner && (
+              <button onClick={handleDelete} className="text-xs font-semibold text-signal hover:underline">
+                Delete project
               </button>
             )}
           </div>

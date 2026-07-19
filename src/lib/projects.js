@@ -74,6 +74,11 @@ export async function completeProject(projectId) {
   if (error) throw error
 }
 
+export async function deleteProject(projectId) {
+  const { error } = await supabase.from('projects').delete().eq('id', projectId)
+  if (error) throw error
+}
+
 export async function getProjectTasks(projectId) {
   const { data, error } = await supabase.from('tasks').select('*').eq('project_id', projectId)
   if (error) throw error
@@ -139,25 +144,35 @@ export async function sendInvitation({ projectId, fromUserId, toUserId, message 
 
 
 export async function sendJoinRequest({ projectId, fromUserId, toUserId, message }) {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('invitations')
     .insert({ project_id: projectId, from_user_id: fromUserId, to_user_id: toUserId, message, type: 'request' })
+    .select('id')
+    .single()
   if (error) throw error
+  return data.id
 }
 
 
 export async function getJoinStatuses(userId) {
   const [{ data: memberships, error: e1 }, { data: pending, error: e2 }] = await Promise.all([
     supabase.from('project_members').select('project_id').eq('user_id', userId),
-    supabase.from('invitations').select('project_id').eq('from_user_id', userId).eq('type', 'request').eq('status', 'pending')
+    supabase.from('invitations').select('id, project_id').eq('from_user_id', userId).eq('type', 'request').eq('status', 'pending')
   ])
   if (e1) throw e1
   if (e2) throw e2
+  const requestedProjectMap = new Map((pending || []).map((r) => [r.project_id, r.id]))
   return {
     memberProjectIds: new Set((memberships || []).map((m) => m.project_id)),
-    requestedProjectIds: new Set((pending || []).map((r) => r.project_id))
+    requestedProjectIds: new Set(requestedProjectMap.keys()),
+    requestedProjectMap
   }
 }
+export async function cancelJoinRequest(invitationId) {
+  const { error } = await supabase.from('invitations').delete().eq('id', invitationId)
+  if (error) throw error
+}
+
 export function describeJoinError(err) {
   const msg = err?.message || ''
   if (msg.includes('already full')) return 'This team is already full.'
