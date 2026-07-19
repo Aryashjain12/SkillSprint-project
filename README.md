@@ -129,7 +129,7 @@ src/
 
 Clone the repository
 
-git clone https://github.com/your-username/skillsprint.git
+git clone https://github.com/Aryashjain12/SkillSprint-project.git
 
 Move into the project directory
 
